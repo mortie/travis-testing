@@ -11,6 +11,10 @@
 #error "Your compiler doesn't support GNU extensions."
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#define _SNOW_COMPILER_GCC
+#endif
+
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -313,7 +317,10 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 			goto _snow_done; \
 	} while (0)
 
-#if(__STDC_VERSION__ >= 201112L)
+#if (__STDC_VERSION__ >= 201112L) && ( \
+	!defined(_SNOW_COMPILER_GCC) || \
+	__GNUC__ >= 5 || \
+	(__GNUC__ >= 4 && __GNUC_MINOR__ >= 7))
 
 #define asserteq(a, b) \
 	do { \
