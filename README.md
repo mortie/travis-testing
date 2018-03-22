@@ -1,5 +1,7 @@
 # Snow
 
+foo bar
+
 Snow is a header-only unit testing library for C. The file
 [snow/snow.h](https://github.com/mortie/snow/blob/master/snow/snow.h) should
 be included from the main source file.
