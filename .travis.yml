@@ -3,3 +3,4 @@ compiler:
     - gcc
 language: c
 script: cd test && make run-test
+dist: xenial
