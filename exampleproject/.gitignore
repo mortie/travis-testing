@@ -1,0 +1,6 @@
+exampleproject
+test
+vgcore.*
+obj/
+obj-test/
+build
