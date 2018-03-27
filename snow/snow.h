@@ -11,10 +11,6 @@
 #error "Your compiler doesn't support GNU extensions."
 #endif
 
-#if defined(__GNUC__) && !defined(__clang__)
-#define _SNOW_COMPILER_GCC
-#endif
-
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -73,9 +69,10 @@ extern struct _snow_describes _snow_describes;
 
 typedef enum
 {
+	_snow_opt_version,
+	_snow_opt_help,
 	_snow_opt_color,
 	_snow_opt_quiet,
-	_snow_opt_version,
 	_snow_opt_maybes,
 	_snow_opt_cr,
 	_snow_opt_timer,
@@ -317,10 +314,7 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 			goto _snow_done; \
 	} while (0)
 
-#if (__STDC_VERSION__ >= 201112L) && ( \
-	!defined(_SNOW_COMPILER_GCC) || \
-	__GNUC__ >= 5 || \
-	(__GNUC__ >= 4 && __GNUC_MINOR__ >= 7))
+#if(__STDC_VERSION__ >= 201112L)
 
 #define asserteq(a, b) \
 	do { \
@@ -473,6 +467,9 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 #define test(testdesc, ...) \
 	do { \
 		__label__ _snow_done; \
+		/* This is to make Clang shut up about "indirect goto in function */ \
+		/* with no address-of-label expressions" when there's no defer(). */ \
+		__attribute__((unused)) void *_snow_unused_label = &&_snow_done; \
 		int __attribute__((unused)) _snow_rundefer = 0; \
 		const char *_snow_desc = testdesc; \
 		_snow_total += 1; \
@@ -545,6 +542,42 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 			&test_##testname; \
 	}
 
+#define _snow_usage(argv0) \
+	do { \
+		_snow_print("Usage: %s [options]     Run all tests.\n", argv0); \
+		_snow_print("       %s -v|--version  Print version and exit.\n", argv0); \
+		_snow_print("       %s -h|--help     Display this help text and exit.\n", argv0); \
+		_snow_print( \
+			"\n" \
+			"Arguments:\n" \
+			"    --color|-c:   Enable colors.\n" \
+			"                  Default: on when output is a TTY.\n" \
+			"    --no-color:   Force disable --color.\n" \
+			"\n" \
+			"    --quiet|-q:   Suppress most messages, only test failures and a summary\n" \
+			"                  error count is shown.\n" \
+			"                  Default: off.\n" \
+			"    --no-quiet:   Force disable --quiet.\n" \
+			"\n" \
+			"    --log <file>: Log output to a file, rather than stdout.\n" \
+			"\n" \
+			"    --timer|-t:   Display the time taken for by each test after\n" \
+			"                  it is completed.\n" \
+			"                  Default: on.\n" \
+			"    --no-timer:   Force disable --timer.\n" \
+			"\n" \
+			"    --maybes|-m:  Print out messages when begining a test as well\n" \
+			"                  as when it is completed.\n" \
+			"                  Default: on when the output is a TTY.\n" \
+			"    --no-maybes:  Force disable --maybes.\n" \
+			"\n" \
+			"    --cr:         Print a carriage return (\\r) rather than a newline\n" \
+			"                  after each --maybes message. This means that the fail or\n" \
+			"                  success message will appear on the same line.\n" \
+			"                  Default: on when the output is a TTY.\n" \
+			"    --no-cr:      Force disable --cr.\n"); \
+	} while (0)
+
 #define snow_main() \
 	int _snow_exit_code = EXIT_SUCCESS; \
 	int _snow_extra_newline = 1; \
@@ -556,9 +589,10 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 	struct _snow_labels _snow_labels = { NULL, 0, 0 }; \
 	struct _snow_describes _snow_describes = { NULL, 0, 0 }; \
 	struct _snow_option _snow_opts[] = { \
+		[_snow_opt_version] = { "version", 'v',  0, 0 }, \
+		[_snow_opt_help]    = { "help",    'h',  0, 0 }, \
 		[_snow_opt_color]   = { "color",   'c',  1, 0 }, \
 		[_snow_opt_quiet]   = { "quiet",   'q',  0, 0 }, \
-		[_snow_opt_version] = { "version", 'v',  0, 0 }, \
 		[_snow_opt_maybes]  = { "maybes",  'm',  1, 0 }, \
 		[_snow_opt_cr]      = { "cr",      '\0', 1, 0 }, \
 		[_snow_opt_timer]   = { "timer",   't',  1, 0 }, \
@@ -627,7 +661,12 @@ static int __attribute__((unused)) _snow_assertneq_buf(
 		} \
 		/* --version: Print version and exit */ \
 		if (_snow_opts[_snow_opt_version].value) { \
-			printf("Snow %s\n", SNOW_VERSION); \
+			_snow_print("Snow %s\n", SNOW_VERSION); \
+			return EXIT_SUCCESS; \
+		} \
+		/* --help: Print usage and exit */ \
+		if (_snow_opts[_snow_opt_help].value) { \
+			_snow_usage(argv[0]); \
 			return EXIT_SUCCESS; \
 		} \
 		/* Run tests */ \
